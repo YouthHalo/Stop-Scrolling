@@ -22,13 +22,11 @@
     },
     instagram: {
       hostPattern: /(^|\.)instagram\.com$/i,
-      redirectTarget: "https://www.instagram.com/",
-      blockedPathPatterns: [/^\/reels(\/|$)/i, /^\/reel\//i],
+      redirectTarget: "https://www.instagram.com/direct/",
+      blockedPathPatterns: [/^\/$/i],
       hideSelectors: [
         'a[href^="/reels"]',
-        'a[href^="/reel/"]',
-        'a[href^="/explore/"]',
-        'a[href="/explore/"]',
+        'a[href^="/explore"]',
       ],
       // Should rarely be seen due to redirect, but in case it is:
       message:
@@ -251,11 +249,11 @@
       return;
     }
 
-    const directExploreLinks = document.querySelectorAll(
-      'a[href^="/explore/"], a[href="/explore/"]',
+    const reelsAndExploreLinks = document.querySelectorAll(
+      'a[href^="/reels"], a[href^="/explore"]',
     );
-    directExploreLinks.forEach((link) => {
-      const container = link.closest('li, div, span, nav a[href^="/explore/"]');
+    reelsAndExploreLinks.forEach((link) => {
+      const container = link.closest("li, a, div, span");
 
       if (container instanceof HTMLElement) {
         container.style.setProperty("display", "none", "important");
@@ -264,6 +262,27 @@
 
       if (link instanceof HTMLElement) {
         link.style.setProperty("display", "none", "important");
+      }
+    });
+
+    const homeLinks = document.querySelectorAll('a[href="/"]');
+    homeLinks.forEach((link) => {
+      if (!(link instanceof HTMLElement)) {
+        return;
+      }
+
+      const isInstagramLogoButton = Boolean(
+        link.querySelector('svg[aria-label="Instagram"], title') &&
+          normalizeText(link.textContent || link.getAttribute("aria-label") || "").includes("instagram"),
+      );
+
+      if (isInstagramLogoButton) {
+        return;
+      }
+
+      const container = link.closest("li, a, div, span");
+      if (container instanceof HTMLElement) {
+        container.style.setProperty("display", "none", "important");
       }
     });
 
@@ -277,7 +296,15 @@
           : node.textContent || "",
       );
 
-      if (!text.includes("explore")) {
+      if (text.includes("instagram")) {
+        return;
+      }
+
+      const isBlockedLabel =
+        text.includes("explore") ||
+        text.includes("home") ||
+        text.includes("reels");
+      if (!isBlockedLabel) {
         return;
       }
 
@@ -738,7 +765,6 @@
     injectHideStyles(rule);
     hideYouTubeShortsGuideEntries();
     hideInstagramExploreEntries();
-    hideInstagramSuggestedPosts();
 
     if (!pathIsBlocked()) {
       return;
@@ -774,11 +800,16 @@
         }
 
         event.preventDefault();
+        const targetRule = getCurrentRule(link.href);
+        if (targetRule === SITE_RULES.instagram) {
+          // Let Instagram's own router handle button/link clicks.
+          return;
+        }
+
         event.stopPropagation();
 
-        const currentRule = getCurrentRule(link.href);
-        if (currentRule && currentRule.redirectTarget) {
-          window.location.assign(currentRule.redirectTarget);
+        if (targetRule && targetRule.redirectTarget) {
+          window.location.assign(targetRule.redirectTarget);
         }
       },
       true,
@@ -815,7 +846,6 @@
       injectHideStyles(getCurrentRule());
       hideYouTubeShortsGuideEntries();
       hideInstagramExploreEntries();
-      hideInstagramSuggestedPosts();
 
       if (pathIsBlocked()) {
         stopMediaPlayback();
@@ -829,7 +859,6 @@
   }
 
   hydrateInstagramBoundaryState();
-  installInstagramFeedBoundaryNetworkBlock();
   setupLinkInterception();
   watchRouteChanges();
   enforceCurrentLocation();
