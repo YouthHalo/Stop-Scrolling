@@ -3,8 +3,10 @@
   "name": "Stop Scrolling",
   "version": "1.0.0",
   "description": "Blocks short-form content on YouTube, Instagram, and TikTok.",
+  "permissions": ["tabs"],
   "action": {
-    "default_title": "Stop Scrolling"
+    "default_title": "Stop Scrolling",
+    "default_popup": "src/popup.html"
   },
   "content_scripts": [
     {
@@ -17,7 +19,8 @@
         "https://tiktok.com/*"
       ],
       "js": ["src/blocker.js"],
-      "run_at": "document_start"
+      "run_at": "document_start",
+      "world": "MAIN"
     }
   ]
 }
