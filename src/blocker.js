@@ -17,13 +17,18 @@
         'ytd-pivot-bar-item-renderer:has(a[href*="/shorts"])',
         "ytd-reel-shelf-renderer",
         "ytd-rich-shelf-renderer[is-shorts]",
+<<<<<<< HEAD
       ], // Should rarely be seen due to redirect, but in case it is:
+=======
+      ],
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
       message: "YouTube Shorts is blocked by Stop Scrolling.",
     },
     instagram: {
       hostPattern: /(^|\.)instagram\.com$/i,
       redirectTarget: "https://www.instagram.com/",
       blockedPathPatterns: [/^\/reels(\/|$)/i, /^\/reel\//i],
+<<<<<<< HEAD
       hideSelectors: [
         'a[href^="/reels"]',
         'a[href^="/reel/"]',
@@ -31,6 +36,9 @@
         'a[href="/explore/"]',
       ],
       // Should rarely be seen due to redirect, but in case it is:
+=======
+      hideSelectors: ['a[href^="/reels"]', 'a[href^="/reel/"]'],
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
       message:
         "Instagram Reels is blocked by Stop Scrolling. You can still view reels sent in messages, but you cannot scroll. Lock in.",
     },
@@ -39,7 +47,11 @@
       redirectTarget: null,
       blockedPathPatterns: [/^\//i],
       hideSelectors: [],
+<<<<<<< HEAD
       message: "TikTok is blocked by Stop Scrolling.", // This is always seen
+=======
+      message: "TikTok is blocked by Stop Scrolling.",
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
     },
   };
 
@@ -49,10 +61,13 @@
     "all caught up",
     "seen all new posts from the past",
   ];
+<<<<<<< HEAD
   const INSTAGRAM_BOUNDARY_STORAGE_KEY =
     "stopScrollingInstagramBoundaryReached";
   const INSTAGRAM_BLOCK_UNTIL_KEY = "stopScrollingInstagramBlockUntil";
   const INSTAGRAM_BLOCK_WINDOW_MS = 2 * 60 * 1000;
+=======
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
   const INSTAGRAM_FEED_BOUNDARY_STATE = {
     reached: false,
   };
@@ -67,6 +82,7 @@
       .trim();
   }
 
+<<<<<<< HEAD
   function readInstagramBoundaryState() {
     try {
       return sessionStorage.getItem(INSTAGRAM_BOUNDARY_STORAGE_KEY) === "1";
@@ -145,6 +161,8 @@
     return Date.now() < readInstagramBlockUntil();
   }
 
+=======
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
   function isInstagramNetworkHost(hostname) {
     return INSTAGRAM_NETWORK_HOST_PATTERN.test(hostname || "");
   }
@@ -246,6 +264,7 @@
     });
   }
 
+<<<<<<< HEAD
   function hideInstagramExploreEntries() {
     if (!SITE_RULES.instagram.hostPattern.test(window.location.hostname)) {
       return;
@@ -301,6 +320,16 @@
     }
 
     if (!isInstagramHomePath()) {
+=======
+  function hideInstagramSuggestedPosts() {
+    if (!SITE_RULES.instagram.hostPattern.test(window.location.hostname)) {
+      INSTAGRAM_FEED_BOUNDARY_STATE.reached = false;
+      return;
+    }
+
+    if (window.location.pathname !== "/") {
+      INSTAGRAM_FEED_BOUNDARY_STATE.reached = false;
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
       return;
     }
 
@@ -329,7 +358,11 @@
     });
 
     if (caughtUpNode || suggestedHeaderNode) {
+<<<<<<< HEAD
       markInstagramBoundaryReached();
+=======
+      INSTAGRAM_FEED_BOUNDARY_STATE.reached = true;
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
     }
 
     if (!INSTAGRAM_FEED_BOUNDARY_STATE.reached) {
@@ -386,6 +419,7 @@
         return;
       }
 
+<<<<<<< HEAD
       const indicatorRect = node.getBoundingClientRect();
       const indicatorTop = indicatorRect.top + window.scrollY;
       if (indicatorTop <= caughtUpBottomInDocument) {
@@ -404,6 +438,11 @@
         );
       if (hostHasSearchInput) {
         return;
+=======
+      let host = node.parentElement || node;
+      if (host.clientWidth < 120 && host.parentElement) {
+        host = host.parentElement;
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
       }
 
       if (host.dataset.stopScrollingReplacement === "1") {
@@ -425,7 +464,19 @@
   }
 
   function shouldBlockInstagramFeedRequest(rawUrl, bodyText) {
+<<<<<<< HEAD
     if (!shouldEnforceInstagramBoundaryNow()) {
+=======
+    if (!SITE_RULES.instagram.hostPattern.test(window.location.hostname)) {
+      return false;
+    }
+
+    if (window.location.pathname !== "/") {
+      return false;
+    }
+
+    if (!INSTAGRAM_FEED_BOUNDARY_STATE.reached) {
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
       return false;
     }
 
@@ -472,8 +523,21 @@
     );
   }
 
+<<<<<<< HEAD
   function shouldBlockInstagramMediaRequest(requestLike, rawUrl, headerBag) {
     if (!shouldEnforceInstagramBoundaryNow()) {
+=======
+  function shouldBlockInstagramMediaRequest(requestLike, rawUrl) {
+    if (!SITE_RULES.instagram.hostPattern.test(window.location.hostname)) {
+      return false;
+    }
+
+    if (window.location.pathname !== "/") {
+      return false;
+    }
+
+    if (!INSTAGRAM_FEED_BOUNDARY_STATE.reached) {
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
       return false;
     }
 
@@ -499,6 +563,7 @@
       return true;
     }
 
+<<<<<<< HEAD
     const requestAcceptHeader =
       requestLike &&
       requestLike.headers &&
@@ -509,6 +574,14 @@
     const acceptHeader = normalizeText(
       requestAcceptHeader ||
         (headerBag && headerBag.accept ? headerBag.accept : ""),
+=======
+    const acceptHeader = normalizeText(
+      requestLike &&
+        requestLike.headers &&
+        typeof requestLike.headers.get === "function"
+        ? requestLike.headers.get("accept") || ""
+        : "",
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
     );
 
     return (
@@ -598,11 +671,15 @@
 
     const nativeXHROpen = XMLHttpRequest.prototype.open;
     const nativeXHRSend = XMLHttpRequest.prototype.send;
+<<<<<<< HEAD
     const nativeXHRSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+=======
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
 
     XMLHttpRequest.prototype.open = function patchedOpen(method, url, ...rest) {
       this.__stopScrollingMethod = method;
       this.__stopScrollingUrl = url;
+<<<<<<< HEAD
       this.__stopScrollingHeaders = {};
       return nativeXHROpen.call(this, method, url, ...rest);
     };
@@ -635,6 +712,29 @@
       ) {
         this.abort();
         return;
+=======
+      return nativeXHROpen.call(this, method, url, ...rest);
+    };
+
+    XMLHttpRequest.prototype.send = function patchedSend(body) {
+      const url = this.__stopScrollingUrl || "";
+      const bodyText = getRequestBodyText(body);
+      if (shouldBlockInstagramFeedRequest(url, bodyText)) {
+        let path = "";
+        try {
+          path = new URL(url, window.location.origin).pathname;
+        } catch {
+          path = "";
+        }
+
+        const isMedia = isMediaStreamPath(path);
+        const blockedDataUrl = isMedia
+          ? "data:text/plain,"
+          : "data:application/json,%7B%22status%22%3A%22ok%22%2C%22items%22%3A%5B%5D%2C%22feed_items%22%3A%5B%5D%2C%22more_available%22%3Afalse%2C%22next_max_id%22%3Anull%7D";
+
+        nativeXHROpen.call(this, "GET", blockedDataUrl, true);
+        return nativeXHRSend.call(this);
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
       }
 
       return nativeXHRSend.call(this, body);
@@ -739,7 +839,10 @@
 
     injectHideStyles(rule);
     hideYouTubeShortsGuideEntries();
+<<<<<<< HEAD
     hideInstagramExploreEntries();
+=======
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
     hideInstagramSuggestedPosts();
 
     if (!pathIsBlocked()) {
@@ -816,7 +919,10 @@
     const observer = new MutationObserver(() => {
       injectHideStyles(getCurrentRule());
       hideYouTubeShortsGuideEntries();
+<<<<<<< HEAD
       hideInstagramExploreEntries();
+=======
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
       hideInstagramSuggestedPosts();
 
       if (pathIsBlocked()) {
@@ -830,7 +936,10 @@
     });
   }
 
+<<<<<<< HEAD
   hydrateInstagramBoundaryState();
+=======
+>>>>>>> 836c875 (Prevent reels from loading in instagram homepage from non-following accounts.)
   installInstagramFeedBoundaryNetworkBlock();
   setupLinkInterception();
   watchRouteChanges();
