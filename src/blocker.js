@@ -255,9 +255,7 @@
       'a[href^="/explore/"], a[href="/explore/"]',
     );
     directExploreLinks.forEach((link) => {
-      const container = link.closest(
-        'li, div, span, nav a[href^="/explore/"]',
-      );
+      const container = link.closest('li, div, span, nav a[href^="/explore/"]');
 
       if (container instanceof HTMLElement) {
         container.style.setProperty("display", "none", "important");
@@ -270,7 +268,7 @@
     });
 
     const labelTargets = document.querySelectorAll(
-      'a[aria-label], svg[aria-label], title',
+      "a[aria-label], svg[aria-label], title",
     );
     labelTargets.forEach((node) => {
       const text = normalizeText(
