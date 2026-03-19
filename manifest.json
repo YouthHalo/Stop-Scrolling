@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Stop Scrolling",
+  "version": "1.0.0",
+  "description": "Blocks short-form content on YouTube, Instagram, and TikTok.",
+  "action": {
+    "default_title": "Stop Scrolling"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.youtube.com/*",
+        "https://youtube.com/*",
+        "https://*.instagram.com/*",
+        "https://instagram.com/*",
+        "https://*.tiktok.com/*",
+        "https://tiktok.com/*"
+      ],
+      "js": ["src/blocker.js"],
+      "run_at": "document_start"
+    }
+  ]
+}
