@@ -17,14 +17,20 @@
         'ytd-pivot-bar-item-renderer:has(a[href*="/shorts"])',
         "ytd-reel-shelf-renderer",
         "ytd-rich-shelf-renderer[is-shorts]",
-      ],
+      ], // Should rarely be seen due to redirect, but in case it is:
       message: "YouTube Shorts is blocked by Stop Scrolling.",
     },
     instagram: {
       hostPattern: /(^|\.)instagram\.com$/i,
       redirectTarget: "https://www.instagram.com/",
       blockedPathPatterns: [/^\/reels(\/|$)/i, /^\/reel\//i],
-      hideSelectors: ['a[href^="/reels"]', 'a[href^="/reel/"]'],
+      hideSelectors: [
+        'a[href^="/reels"]',
+        'a[href^="/reel/"]',
+        'a[href^="/explore/"]',
+        'a[href="/explore/"]',
+      ],
+      // Should rarely be seen due to redirect, but in case it is:
       message:
         "Instagram Reels is blocked by Stop Scrolling. You can still view reels sent in messages, but you cannot scroll. Lock in.",
     },
@@ -33,7 +39,7 @@
       redirectTarget: null,
       blockedPathPatterns: [/^\//i],
       hideSelectors: [],
-      message: "TikTok is blocked by Stop Scrolling.",
+      message: "TikTok is blocked by Stop Scrolling.", // This is always seen
     },
   };
 
@@ -43,6 +49,10 @@
     "all caught up",
     "seen all new posts from the past",
   ];
+  const INSTAGRAM_BOUNDARY_STORAGE_KEY =
+    "stopScrollingInstagramBoundaryReached";
+  const INSTAGRAM_BLOCK_UNTIL_KEY = "stopScrollingInstagramBlockUntil";
+  const INSTAGRAM_BLOCK_WINDOW_MS = 2 * 60 * 1000;
   const INSTAGRAM_FEED_BOUNDARY_STATE = {
     reached: false,
   };
@@ -55,6 +65,84 @@
       .replace(/[\u2018\u2019']/g, "")
       .replace(/\s+/g, " ")
       .trim();
+  }
+
+  function readInstagramBoundaryState() {
+    try {
+      return sessionStorage.getItem(INSTAGRAM_BOUNDARY_STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function setInstagramBoundaryState(value) {
+    INSTAGRAM_FEED_BOUNDARY_STATE.reached = value;
+    try {
+      if (value) {
+        sessionStorage.setItem(INSTAGRAM_BOUNDARY_STORAGE_KEY, "1");
+      } else {
+        sessionStorage.removeItem(INSTAGRAM_BOUNDARY_STORAGE_KEY);
+      }
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+
+  function readInstagramBlockUntil() {
+    try {
+      const raw = sessionStorage.getItem(INSTAGRAM_BLOCK_UNTIL_KEY);
+      const parsed = Number(raw);
+      return Number.isFinite(parsed) ? parsed : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  function setInstagramBlockUntil(timestamp) {
+    try {
+      sessionStorage.setItem(INSTAGRAM_BLOCK_UNTIL_KEY, String(timestamp));
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+
+  function markInstagramBoundaryReached() {
+    setInstagramBoundaryState(true);
+    setInstagramBlockUntil(Date.now() + INSTAGRAM_BLOCK_WINDOW_MS);
+  }
+
+  function isInstagramHomePath() {
+    return window.location.pathname === "/" || window.location.pathname === "";
+  }
+
+  function hydrateInstagramBoundaryState() {
+    if (INSTAGRAM_FEED_BOUNDARY_STATE.reached) {
+      return true;
+    }
+
+    const persisted = readInstagramBoundaryState();
+    if (persisted) {
+      INSTAGRAM_FEED_BOUNDARY_STATE.reached = true;
+      return true;
+    }
+
+    return false;
+  }
+
+  function shouldEnforceInstagramBoundaryNow() {
+    if (!SITE_RULES.instagram.hostPattern.test(window.location.hostname)) {
+      return false;
+    }
+
+    if (!isInstagramHomePath()) {
+      return false;
+    }
+
+    if (hydrateInstagramBoundaryState()) {
+      return true;
+    }
+
+    return Date.now() < readInstagramBlockUntil();
   }
 
   function isInstagramNetworkHost(hostname) {
@@ -158,14 +246,61 @@
     });
   }
 
-  function hideInstagramSuggestedPosts() {
+  function hideInstagramExploreEntries() {
     if (!SITE_RULES.instagram.hostPattern.test(window.location.hostname)) {
-      INSTAGRAM_FEED_BOUNDARY_STATE.reached = false;
       return;
     }
 
-    if (window.location.pathname !== "/") {
-      INSTAGRAM_FEED_BOUNDARY_STATE.reached = false;
+    const directExploreLinks = document.querySelectorAll(
+      'a[href^="/explore/"], a[href="/explore/"]',
+    );
+    directExploreLinks.forEach((link) => {
+      const container = link.closest(
+        'li, div, span, nav a[href^="/explore/"]',
+      );
+
+      if (container instanceof HTMLElement) {
+        container.style.setProperty("display", "none", "important");
+        return;
+      }
+
+      if (link instanceof HTMLElement) {
+        link.style.setProperty("display", "none", "important");
+      }
+    });
+
+    const labelTargets = document.querySelectorAll(
+      'a[aria-label], svg[aria-label], title',
+    );
+    labelTargets.forEach((node) => {
+      const text = normalizeText(
+        node.getAttribute && typeof node.getAttribute === "function"
+          ? node.getAttribute("aria-label") || node.textContent || ""
+          : node.textContent || "",
+      );
+
+      if (!text.includes("explore")) {
+        return;
+      }
+
+      const container = node.closest("a, li, div, span");
+      if (container instanceof HTMLElement) {
+        container.style.setProperty("display", "none", "important");
+      }
+    });
+  }
+
+  function hideInstagramSuggestedPosts() {
+    if (!SITE_RULES.instagram.hostPattern.test(window.location.hostname)) {
+      setInstagramBoundaryState(false);
+      return;
+    }
+
+    if (!INSTAGRAM_FEED_BOUNDARY_STATE.reached) {
+      INSTAGRAM_FEED_BOUNDARY_STATE.reached = readInstagramBoundaryState();
+    }
+
+    if (!isInstagramHomePath()) {
       return;
     }
 
@@ -194,7 +329,7 @@
     });
 
     if (caughtUpNode || suggestedHeaderNode) {
-      INSTAGRAM_FEED_BOUNDARY_STATE.reached = true;
+      markInstagramBoundaryReached();
     }
 
     if (!INSTAGRAM_FEED_BOUNDARY_STATE.reached) {
@@ -251,9 +386,24 @@
         return;
       }
 
+      const indicatorRect = node.getBoundingClientRect();
+      const indicatorTop = indicatorRect.top + window.scrollY;
+      if (indicatorTop <= caughtUpBottomInDocument) {
+        return;
+      }
+
+      if (node.closest('[role="dialog"], [aria-label="Search input"]')) {
+        return;
+      }
+
       let host = node.parentElement || node;
-      if (host.clientWidth < 120 && host.parentElement) {
-        host = host.parentElement;
+      const hostHasSearchInput =
+        host instanceof HTMLElement &&
+        host.querySelector(
+          'input[aria-label="Search input"], input[placeholder="Search"]',
+        );
+      if (hostHasSearchInput) {
+        return;
       }
 
       if (host.dataset.stopScrollingReplacement === "1") {
@@ -275,15 +425,7 @@
   }
 
   function shouldBlockInstagramFeedRequest(rawUrl, bodyText) {
-    if (!SITE_RULES.instagram.hostPattern.test(window.location.hostname)) {
-      return false;
-    }
-
-    if (window.location.pathname !== "/") {
-      return false;
-    }
-
-    if (!INSTAGRAM_FEED_BOUNDARY_STATE.reached) {
+    if (!shouldEnforceInstagramBoundaryNow()) {
       return false;
     }
 
@@ -330,16 +472,8 @@
     );
   }
 
-  function shouldBlockInstagramMediaRequest(requestLike, rawUrl) {
-    if (!SITE_RULES.instagram.hostPattern.test(window.location.hostname)) {
-      return false;
-    }
-
-    if (window.location.pathname !== "/") {
-      return false;
-    }
-
-    if (!INSTAGRAM_FEED_BOUNDARY_STATE.reached) {
+  function shouldBlockInstagramMediaRequest(requestLike, rawUrl, headerBag) {
+    if (!shouldEnforceInstagramBoundaryNow()) {
       return false;
     }
 
@@ -365,12 +499,16 @@
       return true;
     }
 
-    const acceptHeader = normalizeText(
+    const requestAcceptHeader =
       requestLike &&
-        requestLike.headers &&
-        typeof requestLike.headers.get === "function"
+      requestLike.headers &&
+      typeof requestLike.headers.get === "function"
         ? requestLike.headers.get("accept") || ""
-        : "",
+        : "";
+
+    const acceptHeader = normalizeText(
+      requestAcceptHeader ||
+        (headerBag && headerBag.accept ? headerBag.accept : ""),
     );
 
     return (
@@ -460,31 +598,43 @@
 
     const nativeXHROpen = XMLHttpRequest.prototype.open;
     const nativeXHRSend = XMLHttpRequest.prototype.send;
+    const nativeXHRSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
 
     XMLHttpRequest.prototype.open = function patchedOpen(method, url, ...rest) {
       this.__stopScrollingMethod = method;
       this.__stopScrollingUrl = url;
+      this.__stopScrollingHeaders = {};
       return nativeXHROpen.call(this, method, url, ...rest);
     };
+
+    XMLHttpRequest.prototype.setRequestHeader =
+      function patchedSetRequestHeader(name, value) {
+        try {
+          const key = String(name || "").toLowerCase();
+          if (key) {
+            this.__stopScrollingHeaders = this.__stopScrollingHeaders || {};
+            this.__stopScrollingHeaders[key] = String(value || "");
+          }
+        } catch {
+          // Ignore header tracking issues.
+        }
+
+        return nativeXHRSetRequestHeader.call(this, name, value);
+      };
 
     XMLHttpRequest.prototype.send = function patchedSend(body) {
       const url = this.__stopScrollingUrl || "";
       const bodyText = getRequestBodyText(body);
-      if (shouldBlockInstagramFeedRequest(url, bodyText)) {
-        let path = "";
-        try {
-          path = new URL(url, window.location.origin).pathname;
-        } catch {
-          path = "";
-        }
-
-        const isMedia = isMediaStreamPath(path);
-        const blockedDataUrl = isMedia
-          ? "data:text/plain,"
-          : "data:application/json,%7B%22status%22%3A%22ok%22%2C%22items%22%3A%5B%5D%2C%22feed_items%22%3A%5B%5D%2C%22more_available%22%3Afalse%2C%22next_max_id%22%3Anull%7D";
-
-        nativeXHROpen.call(this, "GET", blockedDataUrl, true);
-        return nativeXHRSend.call(this);
+      if (
+        shouldBlockInstagramFeedRequest(url, bodyText) ||
+        shouldBlockInstagramMediaRequest(
+          null,
+          url,
+          this.__stopScrollingHeaders || {},
+        )
+      ) {
+        this.abort();
+        return;
       }
 
       return nativeXHRSend.call(this, body);
@@ -589,6 +739,7 @@
 
     injectHideStyles(rule);
     hideYouTubeShortsGuideEntries();
+    hideInstagramExploreEntries();
     hideInstagramSuggestedPosts();
 
     if (!pathIsBlocked()) {
@@ -654,10 +805,18 @@
 
     window.addEventListener("popstate", enforceCurrentLocation);
     window.addEventListener("hashchange", enforceCurrentLocation);
+    window.addEventListener("pageshow", enforceCurrentLocation);
+    window.addEventListener("focus", enforceCurrentLocation);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        enforceCurrentLocation();
+      }
+    });
 
     const observer = new MutationObserver(() => {
       injectHideStyles(getCurrentRule());
       hideYouTubeShortsGuideEntries();
+      hideInstagramExploreEntries();
       hideInstagramSuggestedPosts();
 
       if (pathIsBlocked()) {
@@ -671,6 +830,7 @@
     });
   }
 
+  hydrateInstagramBoundaryState();
   installInstagramFeedBoundaryNetworkBlock();
   setupLinkInterception();
   watchRouteChanges();
