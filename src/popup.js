@@ -14,6 +14,15 @@ function getCaseMessage(urlString) {
       return "No tiktoks for you :P";
     }
 
+    if (
+      hostname === "x.com" ||
+      hostname.endsWith(".x.com") ||
+      hostname === "twitter.com" || // probably redundant but just in case
+      hostname.endsWith(".twitter.com")
+    ) {
+      return "No timeline for you :P (DMs still work)";
+    }
+
     return "Good job, you're not scrolling!";
   } catch {
     return "Good job, you're not scrolling!";

@@ -24,10 +24,7 @@
       hostPattern: /(^|\.)instagram\.com$/i,
       redirectTarget: "https://www.instagram.com/direct/",
       blockedPathPatterns: [/^\/$/i],
-      hideSelectors: [
-        'a[href^="/reels"]',
-        'a[href^="/explore"]',
-      ],
+      hideSelectors: ['a[href^="/reels"]', 'a[href^="/explore"]'],
       // Should rarely be seen due to redirect, but in case it is:
       message:
         "Instagram Reels is blocked by Stop Scrolling. You can still view reels sent in messages, but you cannot scroll. Lock in.",
@@ -38,6 +35,27 @@
       blockedPathPatterns: [/^\//i],
       hideSelectors: [],
       message: "TikTok is blocked by Stop Scrolling.", // This is always seen
+    },
+    twitter: {
+      hostPattern: /(^|\.)x\.com$|(^|\.)twitter\.com$/i,
+      redirectTarget: "https://x.com/i/chat",
+      allowPathPatterns: [
+        /^\/chat(\/|$)/i,
+        /^\/i\/chat(\/|$)/i,
+        /^\/messages(\/|$)/i,
+        /^\/i\/messages(\/|$)/i,
+        /^\/settings\/direct_messages(\/|$)/i,
+      ],
+      blockedPathPatterns: [/^\//i],
+      hideSelectors: [
+        'a[href="/home"]',
+        'a[href="/explore"]',
+        'a[href="/notifications"]',
+        'a[href="/search"]',
+        'a[href="/communities"]',
+      ],
+      message:
+        "X timeline and replies are blocked by Stop Scrolling. DMs are still available.",
     },
   };
 
@@ -178,6 +196,15 @@
         return false;
       }
 
+      if (rule.allowPathPatterns && rule.allowPathPatterns.length) {
+        const isAllowedPath = rule.allowPathPatterns.some((pattern) =>
+          pattern.test(url.pathname),
+        );
+        if (isAllowedPath) {
+          return false;
+        }
+      }
+
       return rule.blockedPathPatterns.some((pattern) =>
         pattern.test(url.pathname),
       );
@@ -273,7 +300,9 @@
 
       const isInstagramLogoButton = Boolean(
         link.querySelector('svg[aria-label="Instagram"], title') &&
-          normalizeText(link.textContent || link.getAttribute("aria-label") || "").includes("instagram"),
+        normalizeText(
+          link.textContent || link.getAttribute("aria-label") || "",
+        ).includes("instagram"),
       );
 
       if (isInstagramLogoButton) {
@@ -685,7 +714,7 @@
         <div class="stop-scrolling-card">
           <h1>Short-form content blocked</h1>
           <p>${message}</p>
-          <p>You can still use regular YouTube videos, Instagram posts, and messages.</p>
+          <p>You can still use regular YouTube videos, Instagram posts, and direct messages.</p>
         </div>
       `;
 

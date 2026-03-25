@@ -21,6 +21,13 @@ body {
   line-height: 1.3;
 }
 
+.site-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #cbd5e1;
+}
+
 .bottom-message {
   margin: 8px 0 0;
   font-size: 14px;
