@@ -280,13 +280,6 @@
       'a[href^="/reels"], a[href^="/explore"]',
     );
     reelsAndExploreLinks.forEach((link) => {
-      const container = link.closest("li, a, div, span");
-
-      if (container instanceof HTMLElement) {
-        container.style.setProperty("display", "none", "important");
-        return;
-      }
-
       if (link instanceof HTMLElement) {
         link.style.setProperty("display", "none", "important");
       }
@@ -309,9 +302,8 @@
         return;
       }
 
-      const container = link.closest("li, a, div, span");
-      if (container instanceof HTMLElement) {
-        container.style.setProperty("display", "none", "important");
+      if (link instanceof HTMLElement) {
+        link.style.setProperty("display", "none", "important");
       }
     });
 
@@ -337,9 +329,9 @@
         return;
       }
 
-      const container = node.closest("a, li, div, span");
-      if (container instanceof HTMLElement) {
-        container.style.setProperty("display", "none", "important");
+      const link = node.closest("a");
+      if (link instanceof HTMLElement) {
+        link.style.setProperty("display", "none", "important");
       }
     });
   }
