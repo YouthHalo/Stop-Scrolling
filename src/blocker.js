@@ -23,7 +23,7 @@
     instagram: {
       hostPattern: /(^|\.)instagram\.com$/i,
       redirectTarget: "https://www.instagram.com/direct/",
-      blockedPathPatterns: [/^\/$/i],
+      blockedPathPatterns: [/^\/$/i, /^\/reels(\/|$)/i, /^\/reel(\/|$)/i],
       hideSelectors: ['a[href^="/reels"]', 'a[href^="/explore"]'],
       // Should rarely be seen due to redirect, but in case it is:
       message:
