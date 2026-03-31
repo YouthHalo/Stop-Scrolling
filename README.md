@@ -8,6 +8,7 @@ A Chrome/Chromium extension that blocks short-form media and addictive feed surf
 - Instagram Reels routes (for example, `/reels/...` and `/reel/...` if they ever change it)
 - TikTok pages (entire site. You do not need it. Lock in)
 - X/Twitter timeline, replies, explore, and everything outside direct messages
+- Reddit homepage, and endless scrolling on subreddits
 
 ## What Still Works
 
@@ -15,10 +16,11 @@ A Chrome/Chromium extension that blocks short-form media and addictive feed surf
 - Instagram feed/posts
 - Instagram messaging and singular reels sent in messages. No scrolling
 - X/Twitter direct messages (`/i/chat`)
+- Individual posts on X and Reddit
 
 ## How It Works
 
-- Intercepts navigation and clicks to blocked short-form routes.
+- Intercepts navigation and clicks to blocked endless-scrolling routes.
 - Redirects blocked YouTube Shorts and Instagram Reels URLs to each site's home page.
 - Redirects blocked X/Twitter routes to DMs.
 - Replaces TikTok pages with a local block screen.
@@ -31,7 +33,7 @@ A Chrome/Chromium extension that blocks short-form media and addictive feed surf
 3. Click **Load unpacked**.
 4. Select this project folder (`Stop-Scrolling`).
 
-Steps are similar for respective chromium browsers. (Hopefully, I haven't used any other than Brave...)
+Steps are similar for respective chromium browsers. (Hopefully, I haven't used any other than Chrome...)
 
 ## Test URLs
 
@@ -40,5 +42,6 @@ Steps are similar for respective chromium browsers. (Hopefully, I haven't used a
 - https://www.tiktok.com
 - https://x.com/home
 - https://x.com/i/chat
+- https://reddit.com
 
 These should be blocked, while normal YouTube and Instagram pages should continue working and X DMs should remain accessible. You don't need TikTok at all.
