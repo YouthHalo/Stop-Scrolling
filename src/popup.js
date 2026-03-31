@@ -20,7 +20,11 @@ function getCaseMessage(urlString) {
       hostname === "twitter.com" || // probably redundant but just in case
       hostname.endsWith(".twitter.com")
     ) {
-      return "No timeline for you :P (DMs still work)";
+      return "No endless X feed for you :P";
+    }
+
+    if (hostname === "reddit.com" || hostname.endsWith(".reddit.com")) {
+      return "No endless Reddit feed for you :P";
     }
 
     return "Good job, you're not scrolling!";

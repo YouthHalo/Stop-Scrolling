@@ -20,7 +20,9 @@
         "https://*.x.com/*",
         "https://x.com/*",
         "https://*.twitter.com/*",
-        "https://twitter.com/*"
+        "https://twitter.com/*",
+        "https://*.reddit.com/*",
+        "https://reddit.com/*"
       ],
       "js": ["src/blocker.js"],
       "run_at": "document_start",

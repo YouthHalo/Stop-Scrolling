@@ -38,24 +38,54 @@
     },
     twitter: {
       hostPattern: /(^|\.)x\.com$|(^|\.)twitter\.com$/i,
-      redirectTarget: "https://x.com/i/chat",
-      allowPathPatterns: [
-        /^\/chat(\/|$)/i,
-        /^\/i\/chat(\/|$)/i,
-        /^\/messages(\/|$)/i,
-        /^\/i\/messages(\/|$)/i,
-        /^\/settings\/direct_messages(\/|$)/i,
+      redirectTarget: "https://x.com/messages",
+      blockedPathPatterns: [
+        /^\/$/i,
+        /^\/home(\/|$)/i,
+        /^\/explore(\/|$)/i,
+        /^\/search-home(\/|$)/i,
+        /^\/i\/timeline(\/|$)/i,
       ],
-      blockedPathPatterns: [/^\//i],
       hideSelectors: [
         'a[href="/home"]',
         'a[href="/explore"]',
-        'a[href="/notifications"]',
-        'a[href="/search"]',
-        'a[href="/communities"]',
       ],
       message:
-        "X timeline and replies are blocked by Stop Scrolling. DMs are still available.",
+        "X home feed is blocked by Stop Scrolling.",
+    },
+    reddit: {
+      hostPattern: /(^|\.)reddit\.com$/i,
+      redirectTarget: "https://www.reddit.com/search/",
+      blockedPathPatterns: [
+        /^\/$/i,
+        /^\/best(\/|$)/i,
+        /^\/hot(\/|$)/i,
+        /^\/new(\/|$)/i,
+        /^\/top(\/|$)/i,
+        /^\/r\/popular(\/|$)/i,
+        /^\/r\/all(\/|$)/i,
+      ],
+      blockedQueryPatterns: [
+        /(^|&)feed=home(&|$)/i,
+        /(^|&)feed=homepage(&|$)/i,
+        /(^|&)feed=popular(&|$)/i,
+        /(^|&)feed=best(&|$)/i,
+        /(^|&)feed=new(&|$)/i,
+        /(^|&)feed=top(&|$)/i,
+      ],
+      hideSelectors: [
+        'a[href="/"]',
+        'a[href="/?feed=home"]',
+        'a[href^="/?feed=home"]',
+        'a[href="/best/"]',
+        'a[href="/hot/"]',
+        'a[href="/new/"]',
+        'a[href="/top/"]',
+        'a[href="/r/popular/"]',
+        'a[href="/r/all/"]',
+      ],
+      message:
+        "Reddit home feeds are blocked by Stop Scrolling.",
     },
   };
 
@@ -71,6 +101,11 @@
   const INSTAGRAM_BLOCK_WINDOW_MS = 2 * 60 * 1000;
   const INSTAGRAM_FEED_BOUNDARY_STATE = {
     reached: false,
+  };
+  const FINITE_SCROLL_BUFFER_PX = 900;
+  const FINITE_SCROLL_STATE = {
+    twitter: { routeKey: "", lockY: null },
+    reddit: { routeKey: "", lockY: null },
   };
   const INSTAGRAM_NETWORK_HOST_PATTERN =
     /(^|\.)instagram\.com$|(^|\.)cdninstagram\.com$|(^|\.)fbcdn\.net$/i;
@@ -205,6 +240,16 @@
         }
       }
 
+      if (rule.blockedQueryPatterns && rule.blockedQueryPatterns.length) {
+        const query = url.search.replace(/^\?/, "");
+        const isBlockedByQuery = rule.blockedQueryPatterns.some((pattern) =>
+          pattern.test(query),
+        );
+        if (isBlockedByQuery) {
+          return true;
+        }
+      }
+
       return rule.blockedPathPatterns.some((pattern) =>
         pattern.test(url.pathname),
       );
@@ -222,6 +267,26 @@
     }
   }
 
+  function shouldImmediateRedirectRedditHome(urlString = window.location.href) {
+    try {
+      const url = new URL(urlString);
+      if (!SITE_RULES.reddit.hostPattern.test(url.hostname)) {
+        return false;
+      }
+
+      const query = url.search.replace(/^\?/, "");
+      const hitsBlockedFeedQuery =
+        SITE_RULES.reddit.blockedQueryPatterns &&
+        SITE_RULES.reddit.blockedQueryPatterns.some((pattern) =>
+          pattern.test(query),
+        );
+
+      return url.pathname === "/" && Boolean(hitsBlockedFeedQuery);
+    } catch {
+      return false;
+    }
+  }
+
   function stopMediaPlayback() {
     const media = document.querySelectorAll("video, audio");
     media.forEach((item) => {
@@ -232,6 +297,138 @@
         // Ignore if it doesn't work
       }
     });
+  }
+
+  function getFiniteScrollSite() {
+    if (SITE_RULES.twitter.hostPattern.test(window.location.hostname)) {
+      return "twitter";
+    }
+
+    if (SITE_RULES.reddit.hostPattern.test(window.location.hostname)) {
+      return "reddit";
+    }
+
+    return null;
+  }
+
+  function isFiniteScrollExemptPath(site, path) {
+    if (site === "twitter") {
+      return (
+        /^\/i\/chat(\/|$)/i.test(path) ||
+        /^\/messages(\/|$)/i.test(path) ||
+        /^\/i\/messages(\/|$)/i.test(path) ||
+        /^\/settings\/direct_messages(\/|$)/i.test(path) ||
+        /^\/compose(\/|$)/i.test(path)
+      );
+    }
+
+    if (site === "reddit") {
+      return (
+        /^\/message(\/|$)/i.test(path) ||
+        /^\/messages(\/|$)/i.test(path) ||
+        /^\/chat(\/|$)/i.test(path)
+      );
+    }
+
+    return false;
+  }
+
+  function ensureFiniteScrollLock(site) {
+    const state = FINITE_SCROLL_STATE[site];
+    if (!state) {
+      return;
+    }
+
+    const routeKey = `${window.location.pathname}${window.location.search}`;
+    if (state.routeKey !== routeKey) {
+      state.routeKey = routeKey;
+      state.lockY = null;
+    }
+
+    if (state.lockY !== null) {
+      return;
+    }
+
+    const doc = document.documentElement;
+    const body = document.body;
+    const docHeight = Math.max(
+      doc ? doc.scrollHeight : 0,
+      body ? body.scrollHeight : 0,
+    );
+    const baselineMax = Math.max(0, docHeight - window.innerHeight);
+    const minReadable = Math.max(
+      window.scrollY + Math.round(window.innerHeight * 1.25),
+      0,
+    );
+
+    state.lockY = Math.max(baselineMax, minReadable) + FINITE_SCROLL_BUFFER_PX;
+  }
+
+  function enforceFiniteScrollBoundary() {
+    const site = getFiniteScrollSite();
+    if (!site) {
+      return;
+    }
+
+    if (isFiniteScrollExemptPath(site, window.location.pathname)) {
+      return;
+    }
+
+    ensureFiniteScrollLock(site);
+    const state = FINITE_SCROLL_STATE[site];
+    if (!state || state.lockY === null) {
+      return;
+    }
+
+    if (window.scrollY > state.lockY) {
+      window.scrollTo(0, state.lockY);
+    }
+  }
+
+  function preventInfiniteScrollInputs(event) {
+    const site = getFiniteScrollSite();
+    if (!site) {
+      return;
+    }
+
+    if (isFiniteScrollExemptPath(site, window.location.pathname)) {
+      return;
+    }
+
+    ensureFiniteScrollLock(site);
+    const state = FINITE_SCROLL_STATE[site];
+    if (!state || state.lockY === null) {
+      return;
+    }
+
+    const atBoundary = window.scrollY >= state.lockY - 1;
+    if (!atBoundary) {
+      return;
+    }
+
+    if (event.type === "wheel") {
+      if (event.deltaY > 0) {
+        event.preventDefault();
+      }
+      return;
+    }
+
+    if (event.type === "keydown") {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA")
+      ) {
+        return;
+      }
+
+      const downKeys = ["ArrowDown", "PageDown", "End", " "];
+      if (downKeys.includes(event.key)) {
+        event.preventDefault();
+      }
+    }
   }
 
   function injectHideStyles(rule) {
@@ -334,6 +531,70 @@
         link.style.setProperty("display", "none", "important");
       }
     });
+  }
+
+  function hideRedditHomeEntries() {
+    if (!SITE_RULES.reddit.hostPattern.test(window.location.hostname)) {
+      return;
+    }
+
+    const hardSelectors = [
+      'faceplate-tracker[source="nav"][action="click"][noun="home"]',
+      '#home-posts',
+      'li#home-posts',
+      'a[href="/?feed=home"]',
+      'a[href^="/?feed=home"]',
+    ];
+
+    hardSelectors.forEach((selector) => {
+      const nodes = document.querySelectorAll(selector);
+      nodes.forEach((node) => {
+        if (node instanceof HTMLElement) {
+          node.style.setProperty("display", "none", "important");
+        }
+      });
+    });
+
+    const homeLinkCandidates = document.querySelectorAll(
+      'a[href^="/?feed=home"], a[href="/"], a[href^="https://www.reddit.com/?feed=home"], a[href^="https://reddit.com/?feed=home"]',
+    );
+
+    homeLinkCandidates.forEach((link) => {
+      if (!(link instanceof HTMLElement)) {
+        return;
+      }
+
+      const href = (link.getAttribute("href") || "").toLowerCase();
+      const text = normalizeText(link.textContent || "");
+      const hasHomeIcon = Boolean(link.querySelector('svg[icon-name="home"]'));
+      const isFeedHomeHref = href.includes("feed=home") || href === "/";
+      const isHomeLabel = text.includes("home") || hasHomeIcon;
+      if (!isFeedHomeHref && !isHomeLabel) {
+        return;
+      }
+
+      link.style.setProperty("display", "none", "important");
+    });
+
+    const hideInsideShadowRoots = (root) => {
+      const localMatches = root.querySelectorAll(
+        'faceplate-tracker[source="nav"][action="click"][noun="home"], #home-posts, li#home-posts, a[href="/?feed=home"], a[href^="/?feed=home"]',
+      );
+      localMatches.forEach((node) => {
+        if (node instanceof HTMLElement) {
+          node.style.setProperty("display", "none", "important");
+        }
+      });
+
+      const allElements = root.querySelectorAll("*");
+      allElements.forEach((el) => {
+        if (el instanceof HTMLElement && el.shadowRoot) {
+          hideInsideShadowRoots(el.shadowRoot);
+        }
+      });
+    };
+
+    hideInsideShadowRoots(document);
   }
 
   function hideInstagramSuggestedPosts() {
@@ -786,6 +1047,8 @@
     injectHideStyles(rule);
     hideYouTubeShortsGuideEntries();
     hideInstagramExploreEntries();
+    hideRedditHomeEntries();
+    enforceFiniteScrollBoundary();
 
     if (!pathIsBlocked()) {
       return;
@@ -857,6 +1120,15 @@
     window.addEventListener("hashchange", enforceCurrentLocation);
     window.addEventListener("pageshow", enforceCurrentLocation);
     window.addEventListener("focus", enforceCurrentLocation);
+    window.addEventListener("scroll", enforceFiniteScrollBoundary, {
+      passive: true,
+    });
+    window.addEventListener("wheel", preventInfiniteScrollInputs, {
+      passive: false,
+    });
+    window.addEventListener("keydown", preventInfiniteScrollInputs, {
+      passive: false,
+    });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         enforceCurrentLocation();
@@ -867,6 +1139,7 @@
       injectHideStyles(getCurrentRule());
       hideYouTubeShortsGuideEntries();
       hideInstagramExploreEntries();
+      hideRedditHomeEntries();
 
       if (pathIsBlocked()) {
         stopMediaPlayback();
@@ -877,6 +1150,11 @@
       subtree: true,
       childList: true,
     });
+  }
+
+  if (shouldImmediateRedirectRedditHome()) {
+    window.location.replace(SITE_RULES.reddit.redirectTarget);
+    return;
   }
 
   hydrateInstagramBoundaryState();
